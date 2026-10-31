@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    # Keep this name: branch protection requires a check called "CI".
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check whitespace errors and conflict markers
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+      - name: Scripts parse
+        run: |
+          python3 -m py_compile scripts/*.py
+          for f in scripts/*.sh; do bash -n "$f"; done
+          for f in assets/hooks/guard-main-* assets/hooks/husky-subdir-commit-msg; do sh -n "$f"; done
+
+      - name: Templates are valid YAML and JSON
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 - <<'PY'
+          import glob, json, yaml
+          for path in glob.glob("assets/**/*.yml", recursive=True) + glob.glob("assets/**/*.yaml", recursive=True) + glob.glob(".github/**/*.yml", recursive=True):
+              yaml.safe_load(open(path))
+          for path in glob.glob("assets/**/*.json", recursive=True) + ["release-please-config.json", ".release-please-manifest.json"]:
+              json.load(open(path))
+          print("templates OK")
+          PY
+
+      - name: AI trace checker accepts clean text and refuses attribution
+        run: |
+          echo "feat(auth): add Google sign-in" | python3 scripts/check-no-ai-trace.py --stdin
+          if printf 'fix: typo\n\nCo-Authored-By: Bot <noreply@anthropic.com>\n' | python3 scripts/check-no-ai-trace.py --stdin; then
+            echo "an attribution trailer went through"; exit 1
+          fi
+
+      - name: No AI trace in the history of this repository
+        run: python3 scripts/check-no-ai-trace.py --head
