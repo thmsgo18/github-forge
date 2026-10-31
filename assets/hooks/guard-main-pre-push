@@ -1,0 +1,7 @@
+# Refuse les push directs sur main : tout passe par une pull request.
+while read -r local_ref local_oid remote_ref remote_oid; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "✗ Pas de push direct sur main : pousse ta branche et ouvre une pull request." >&2
+    exit 1
+  fi
+done

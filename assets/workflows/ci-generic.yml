@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    # Keep this name: branch protection requires a check called "CI".
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check whitespace errors and conflict markers
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+      - name: Build and test
+        # Replace with the project's real commands as soon as they exist.
+        run: |
+          if [ -f Makefile ]; then
+            make test
+          else
+            echo "No build or test command configured yet."
+          fi

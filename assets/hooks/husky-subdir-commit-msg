@@ -1,0 +1,6 @@
+# Vérifie que le message suit Conventional Commits. Projet dans le sous-dossier « app » (adapter le cd).
+case "$1" in
+  /*) msg="$1" ;;
+  *) msg="$(pwd)/$1" ;;
+esac
+cd app && npx --no -- commitlint --edit "$msg"

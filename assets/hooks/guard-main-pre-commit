@@ -1,0 +1,5 @@
+# Refuse les commits directs sur main.
+if [ "$(git symbolic-ref --short HEAD 2>/dev/null)" = "main" ]; then
+  echo "✗ Pas de commit direct sur main : crée une branche, par exemple git switch -c feat/12-ma-tache" >&2
+  exit 1
+fi
